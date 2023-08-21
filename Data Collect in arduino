@@ -1,0 +1,61 @@
+arduino code to collect the data from the optical detector 
+
+#include <SoftwareSerial.h>
+
+SoftwareSerial mySerial(10, 11); // RX, TX
+
+const int PIN_OSCILLOSCOPE = A4;
+const unsigned int FREQUENCY = 2000; // Fréquence d'envoi en Hz (2 kHz)
+
+const float ALPHA = 0.005; // Coefficient de lissage du filtre passe-bas
+const float BETA = 0.02;  // Coefficient pour stabiliser rapidement la valeur
+
+float tensionStabilisee = 0.0; // Variable pour stocker la tension stabilisée
+float moyenne = 0.0; // Variable pour stocker la moyenne des échantillons
+
+void setup() {
+  Serial.begin(230400); // Démarre la communication série
+  mySerial.begin(230400); // Initialise la communication série avec la même vitesse
+}
+
+void loop() {
+  unsigned long startTime = micros(); // Enregistre le temps de début de l'envoi en microsecondes
+
+  int echantillon = analogRead(PIN_OSCILLOSCOPE); // Lit l'échantillon de tension
+
+  // Calcul de la tension instantanée
+  float tensionInstantanee = (float)echantillon * 5.0 / 1023.0;
+
+  // Calcul de la moyenne des échantillons avec le coefficient alpha
+  moyenne = moyenne + ALPHA * (tensionInstantanee - moyenne);
+
+  // Utilisation du filtre passe-bas avec le coefficient beta pour stabiliser rapidement la valeur
+  tensionStabilisee = BETA * tensionInstantanee + (1 - BETA) * tensionStabilisee;
+
+  float tensionArrondie = round(tensionStabilisee * 1000) / 1000.0; // Arrondi à 0.001 près
+  
+  Serial.println(tensionStabilisee, 3);
+
+  if (mySerial.availableForWrite()) {
+    mySerial.println(tensionStabilisee, 3);
+
+    if (tensionStabilisee == 2.54) {
+      mySerial.println("Valeur de tension égale à 2.54 !");
+    }
+  }
+
+  unsigned long endTime = micros(); // Enregistre le temps de fin de l'envoi en microsecondes
+
+  unsigned long sendTime = endTime - startTime; // Calcule le temps d'envoi en microsecondes
+  float sendTimeMs = (float)sendTime / 1000.0; // Convertit le temps d'envoi en millisecondes
+Serial.print("Temps d'envoi : ");
+Serial.print(sendTime);
+Serial.println(" ms");
+// 
+
+ 
+  // Attendre jusqu'à ce que le temps d'envoi atteigne 500 microsecondes (correspondant à une fréquence de 2 kHz)
+  if (sendTime < 500) {
+    delayMicroseconds(500 - sendTime);
+  }
+}
