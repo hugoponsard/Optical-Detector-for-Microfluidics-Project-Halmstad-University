@@ -1,0 +1,318 @@
+Data reception and treament in JAVA
+
+
+package opticalDetect;
+
+import java.util.ArrayList;
+
+
+import java.util.List;
+import java.util.Scanner;
+
+import com.fazecast.jSerialComm.SerialPort;
+
+public class SerialPortReception4 {
+    private SerialPort mySerialPort;
+    
+    
+
+    public void initPort(int availablePortIndex) {
+        SerialPort[] availablePorts = SerialPort.getCommPorts();
+
+        if (availablePortIndex < 0 || availablePortIndex >= availablePorts.length) {
+            System.out.println("Index de port série non valide.");
+            return;
+        }
+
+        System.out.println("Ports série disponibles :");
+        for (int i = 0; i < availablePorts.length; i++) {
+            System.out.println(i + ": " + availablePorts[i].getSystemPortName());
+        }
+
+        mySerialPort = availablePorts[availablePortIndex];
+        mySerialPort.openPort();
+        mySerialPort.setComPortParameters(230400, 8, 1, 0);
+        mySerialPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 0, 0);
+    }
+
+    public void closePort() {
+        if (mySerialPort != null && mySerialPort.isOpen()) {
+            mySerialPort.closePort();
+        }
+    }
+
+    public int countBubbles(float[] oscilloscopeData, int dataIndex,double referenceValue) {
+        int bubbleCount = 0;
+        
+        boolean insideBubble = false;
+        boolean belowReference = false;
+        boolean incrementCount = false;
+
+        for (int i = 0; i < dataIndex; i++) {
+            float value = oscilloscopeData[i];
+
+            if (value < referenceValue) {
+                if (!insideBubble && !belowReference) {
+                    belowReference = true;
+                    incrementCount = true; // To indicate that the counter should be incremented
+                }
+            } else if (value >= referenceValue && belowReference && incrementCount) {
+                belowReference = false;
+                incrementCount = false; // Reset the marker to false to avoid additional increments
+                bubbleCount++;
+            } else if (value >= referenceValue) {
+                belowReference = false; // Reset the marker if the value goes back above the reference (to avoid multiple incrementation)
+            }
+        }
+
+        return bubbleCount;
+    }
+
+    
+
+    
+   
+
+
+
+    public double[][] getBubbleData(float[] oscilloscopeData, int dataIndex,double referenceValue, double timeInterval) {
+        List<Integer> bubbleIndices = new ArrayList<>();
+        List<Double> bubbleTimes = new ArrayList<>();
+       
+        boolean insideBubble = false;
+        boolean belowReference = false;
+        boolean incrementCount = false;
+        int bubbleStartIndex = 0;
+       
+        
+      
+        for (int i = 0; i < dataIndex; i++) {
+            float value = oscilloscopeData[i];
+
+            if (value < referenceValue) {
+                if (!insideBubble && !belowReference) {
+                    belowReference = true;
+                    incrementCount = true;
+                    bubbleStartIndex = i;
+                }
+            } else if (value >= referenceValue && belowReference && incrementCount) {
+                belowReference = false;
+                incrementCount = false;
+                
+                int bubbleEndIndex = i - 1; // The end index of the crystal is the previous index where the value exceeds maxValue
+                double bubbleTime = (bubbleEndIndex - bubbleStartIndex) * timeInterval;
+                bubbleIndices.add(bubbleStartIndex);
+                bubbleTimes.add(bubbleTime);
+                
+                
+            } else if (value >= referenceValue) {
+                belowReference = false;
+            }
+        }
+
+        double[][] bubbleData = new double[bubbleIndices.size()][2];
+        for (int i = 0; i < bubbleIndices.size(); i++) {
+            bubbleData[i][0] = bubbleIndices.get(i);
+            bubbleData[i][1] = bubbleTimes.get(i);
+        }
+
+        return bubbleData;
+    }
+
+
+
+    
+    
+    
+    
+    
+    
+
+    public int countCrystals(float[] oscilloscopeData, int dataIndex, double minValue, double maxValue) {
+        int crystalCount = 0;
+        boolean insideCrystal = false;
+        boolean belowThreshold = false;
+    
+
+        for (int i = 0; i < dataIndex; i++) {
+            float value = oscilloscopeData[i];
+
+            if (value >= minValue && value <= maxValue && !insideCrystal && !belowThreshold) {
+                insideCrystal = true;
+            } else if (value < minValue) {
+                belowThreshold = true;
+            } else if (value > 2.54 && insideCrystal && belowThreshold) {
+                belowThreshold = false;
+                insideCrystal = false;
+                
+            } else if (value > maxValue && insideCrystal && !belowThreshold) {
+                insideCrystal = false;
+                crystalCount++;
+                 
+            } else if (value > maxValue && !insideCrystal && belowThreshold) {
+            	belowThreshold = false;
+                 
+            }
+        }
+
+        // Affichage des booléens en dehors de la boucle
+        System.out.println("------------------------------------");
+        System.out.println("insideCrystal: " + insideCrystal);
+        System.out.println("belowThreshold: " + belowThreshold);
+        System.out.println("------------------------------------");
+
+        return crystalCount;
+    }
+
+
+    
+    public double[][] getCrystalData(float[] oscilloscopeData, int dataIndex, double minValue, double maxValue,double timeInterval) {
+    	List<Integer> crystalIndices = new ArrayList<>();
+        List<Double> crystalTimes = new ArrayList<>();
+        boolean insideCrystal = false;
+        int crystalStartIndex = 0;
+       
+      
+        
+        boolean belowThreshold = false; // New variable to check if the value falls below minValue
+
+        for (int i = 0; i < dataIndex; i++) {
+            float value = oscilloscopeData[i];
+            
+            if (value >= minValue && value <= maxValue && !insideCrystal && !belowThreshold) {
+                insideCrystal = true;
+                crystalStartIndex = i;
+              
+            } 
+            
+            
+            else if (value < minValue) {
+                belowThreshold = true; // To indicate that the value has fallen below minValue
+             } 
+            else if (value > maxValue && insideCrystal && belowThreshold) {
+                belowThreshold = false; // Reset the marker if the value goes back above maxValue
+                insideCrystal = false; // Reset the marker for crystals if the value goes back above maxValue
+              
+            }
+        
+        else if (value > maxValue && insideCrystal && !belowThreshold) {
+            insideCrystal = false;
+            
+            
+            int crystalEndIndex = i - 1; // The end index of the crystal is the previous index where the value exceeds maxValue
+            double crystalTime = (crystalEndIndex - crystalStartIndex) * timeInterval;
+            crystalIndices.add(crystalStartIndex);
+            crystalTimes.add(crystalTime);
+            
+        } else if (value > maxValue && !insideCrystal && belowThreshold) {
+        	belowThreshold = false;
+            
+        }
+           
+            
+        }
+        
+        double[][] crystalData = new double[crystalIndices.size()][2];
+        for (int i = 0; i < crystalIndices.size(); i++) {
+            crystalData[i][0] = crystalIndices.get(i);
+            crystalData[i][1] = crystalTimes.get(i);
+        }
+
+        return crystalData;
+    }
+    
+
+       
+  
+
+
+
+
+public double[] calculerDistances(double[] tempsEnSecondes, double vitesseEnKmH) {
+    double[] distancesEnCm = new double[tempsEnSecondes.length];
+
+    for (int i = 0; i < tempsEnSecondes.length; i++) {
+        // Conversion du temps en heures
+        double tempEnHeures = tempsEnSecondes[i] / 3600;
+
+        // Calcul de la distance en centimètres
+        distancesEnCm[i] = tempEnHeures * vitesseEnKmH * 100000;
+    }
+
+    return distancesEnCm;
+}
+   
+    public double calculateTime(double index, double timeInterval) {
+       
+        double time = index * timeInterval;
+        return time;
+    }
+
+
+    public void receiveOscilloscopeDatax(float[] oscilloscopeData, float[] crystalData, double referenceValueBubble,double minValue, double maxValue) {
+        StringBuilder receivedData = new StringBuilder();
+        int dataIndex = oscilloscopeData.length;
+        int bubbleIndex = 0;
+        int crystalIndex = 0;
+
+        while (bubbleIndex < dataIndex || crystalIndex < dataIndex) {
+            if (mySerialPort.bytesAvailable() > 0) {
+                byte[] buffer = new byte[8000]; //Increase buffer size if necessary
+                mySerialPort.readBytes(buffer, buffer.length);
+                receivedData.append(new String(buffer));
+
+                while (receivedData.indexOf("\n") != -1) {
+                    int endIndex = receivedData.indexOf("\n");
+                    String valueString = receivedData.substring(0, endIndex).trim();
+                    receivedData.delete(0, endIndex + 1);
+
+                    if (isNumeric(valueString)) {
+                        float dataValue = Float.parseFloat(valueString);
+                        if (bubbleIndex < dataIndex) {
+                            oscilloscopeData[bubbleIndex] = dataValue; // Bubble data
+                            bubbleIndex++;
+                            System.out.println("current value : " + dataValue);
+                            System.out.println("crystal number : " + countCrystals(crystalData, crystalIndex,minValue, maxValue));
+                            System.out.println("Table value at position " + (bubbleIndex - 1) );
+                            System.out.println("bubble number : " + countBubbles(oscilloscopeData, bubbleIndex,referenceValueBubble));
+                        }
+                        if (crystalIndex < dataIndex) {
+                            crystalData[crystalIndex] = dataValue; // Crystal data
+                            crystalIndex++;
+                           
+                           
+                            
+                        }
+                    }
+                }
+            }
+        }
+
+        
+    }
+
+
+
+    
+    private static boolean isNumeric(String str) {
+        return str.matches("-?\\d+(\\.\\d+)?");
+    }
+
+    public static void main(String[] args) {
+
+        SerialPortReception4 serial = new SerialPortReception4();
+       
+
+        System.out.println("\n\nCHOIX PORT: ");
+        serial.initPort(0);
+        Scanner scanner = new Scanner(System.in);
+       
+        scanner.close();
+
+        
+
+        
+
+        serial.closePort();
+    }
+}
