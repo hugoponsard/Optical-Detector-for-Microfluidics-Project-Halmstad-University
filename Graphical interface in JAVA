@@ -1,0 +1,389 @@
+package opticalDetect;
+
+import java.util.Scanner;
+import javafx.scene.image.Image;
+import javafx.animation.AnimationTimer;
+import javafx.application.Application;
+import javafx.scene.Scene;
+import javafx.scene.layout.GridPane;
+import javafx.stage.Stage;
+import javafx.geometry.Insets;
+import javafx.scene.control.Hyperlink;
+import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
+import javafx.scene.control.Label;
+import javafx.scene.control.Separator;
+import javafx.scene.control.Button;
+
+
+public class MainOpticalDetector extends Application {
+
+    private SerialPortReception4 serial;
+   
+   
+    
+    private float[] bubbleDatax;
+    private float[] crystalDatax;
+    
+    
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+
+    public VBox addVBox(int nombreBulles, int pourcentage) {
+        VBox vbox = new VBox();
+        vbox.setPadding(new Insets(10));
+        vbox.setSpacing(8);
+
+        Text title = new Text("Bubble detector");
+        title.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+        vbox.getChildren().add(title);
+
+        Label labelNombreBulles = new Label("Number of Bubbles : " + nombreBulles);
+        vbox.getChildren().add(labelNombreBulles);
+        Label labelPourcentage = new Label("Bubble percentage : " + pourcentage + "%");
+        vbox.getChildren().add(labelPourcentage);
+
+        Hyperlink updateButton = new Hyperlink("Update");
+        updateButton.setOnAction(event -> {
+        	// Here you can choose to update the value of "numberBubbles" if necessary
+            labelNombreBulles.setText("Number of Bubbles: " + nombreBulles);
+        });
+        vbox.getChildren().add(updateButton);
+
+        return vbox;
+    }
+    public VBox addVBoxx(int nombreBulles, int pourcentage, boolean isButtonGreen) {
+        VBox vbox = new VBox();
+        vbox.setPadding(new Insets(10));
+        vbox.setSpacing(8);
+
+        Text title = new Text("Bubble detector");
+        title.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+        vbox.getChildren().add(title);
+
+        Label labelNombreBulles = new Label("Number of Bubbles : " + nombreBulles);
+        vbox.getChildren().add(labelNombreBulles);
+        Label labelPourcentage = new Label("Bubble percentage : " + pourcentage + "%");
+        vbox.getChildren().add(labelPourcentage);
+
+        Button button = new Button();
+        button.setMinWidth(80);
+        button.setMinHeight(30);
+        button.setStyle("-fx-background-color: " + (isButtonGreen ? "green" : "red") + ";");
+
+        vbox.getChildren().add(button);
+
+        return vbox;
+    }
+    public VBox addVBoxxx(int nombreBulles, int pourcentage, boolean isButtonGreen) {
+        VBox vbox = new VBox();
+        vbox.setPadding(new Insets(10));
+        vbox.setSpacing(8);
+
+        Text title = new Text("Crystal detector");
+        title.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+        vbox.getChildren().add(title);
+
+        Label labelNombreBulles = new Label("Number of crystal : " + nombreBulles);
+        vbox.getChildren().add(labelNombreBulles);
+        Label labelPourcentage = new Label("crystal percentage : " + pourcentage + "%");
+        vbox.getChildren().add(labelPourcentage);
+
+        Button button = new Button();
+        button.setMinWidth(80);
+        button.setMinHeight(30);
+        button.setStyle("-fx-background-color: " + (isButtonGreen ? "green" : "red") + ";");
+
+        vbox.getChildren().add(button);
+
+        return vbox;
+    }
+  
+
+    public void start(Stage stage) {
+        stage.setTitle("OPTICAL DETECTOR HALMSTAD UNIVERSITY");
+
+        stage.getIcons().add(new Image("C:\\Users\\hugop\\SWEDEN\\logo.png"));
+
+        serial = new SerialPortReception4();
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("\n\nCHOIX PORT: ");
+        int available = scanner.nextInt();
+        scanner.close();
+        serial.initPort(available);
+        
+
+     // Use GridPane to place elements
+        GridPane gridPane = new GridPane();
+        gridPane.setHgap(10);
+        gridPane.setVgap(10);
+        gridPane.setPadding(new Insets(10));
+
+     // Creating the scene
+        Scene scene = new Scene(gridPane, 600, 400);
+
+     // Scene configuration
+        stage.setScene(scene);
+        bubbleDatax = new float[31250];
+        crystalDatax = new float[31250];
+        
+     // Timer animation for acquisition and display
+        AnimationTimer animation = new AnimationTimer() {
+        	 private boolean premiereAcquisition = true;
+        	 
+            public void handle(long now) {
+            	
+            	
+            	// ------------------------------------------------- SETUP --------------------------------------------------------
+                int dataIndex = 31250;
+                double vitesse = 0.05; // Flow rate
+                double referenceValueBubble =2.52;
+                double referenceValueCrystalLow =2.52;      
+                double referenceValueCrystalHigh =2.54;
+                
+                double timeInterval = 0.00064; //Time interval between samples (in seconds)
+                boolean presence = true;
+                // -------------------------------------------------------------------------------------------------------------------
+                
+                if (premiereAcquisition) {
+                	
+                	
+                
+                	
+                	// Collect of data  from the serial port and filling of table
+                	serial.receiveOscilloscopeDatax(bubbleDatax,crystalDatax,referenceValueBubble,referenceValueCrystalLow,referenceValueCrystalHigh);
+                    
+                    
+                    
+                    
+                	System.out.println("-----------BUBBLE DATA---------------");
+                         
+                    
+                   //bubble
+                	
+                	int BubbleCount = serial.countBubbles(bubbleDatax, dataIndex,referenceValueBubble);
+                    System.out.println("The number of bubbles detected during acquisition is : "
+                            + BubbleCount );
+                    
+                    
+    
+                    
+                    
+                    System.out.println("Here is a table listing all the bubble index :  ");
+
+                 // Call the getBubbleData method to obtain bubble data
+                       double[][] bubbleData = serial.getBubbleData(bubbleDatax, dataIndex,referenceValueBubble,timeInterval);
+
+                    // Declaration of individual tables
+                       double[] bubbleIndex = new double[bubbleData.length];
+                       double[] bubbleTimes = new double[bubbleData.length];
+                    
+                    // Display of indices and associated times for bubble
+                       
+                       System.out.println("Here is the table of bubble indices and their associated times: ");
+
+                       for (int i = 0; i < bubbleData.length; i++) {
+                           bubbleIndex[i] = bubbleData[i][0]; // index associated with each bubble
+                           bubbleTimes[i] = bubbleData[i][1]; // time associated with each bubble
+                           System.out.printf("The bubble is in position %.0f and it passes through the detector after %.4f s, and the bubble passes during %.4f s\n",
+                           bubbleIndex[i], serial.calculateTime((int) bubbleIndex[i],timeInterval), bubbleTimes[i]);
+                       }
+
+                       System.out.println("Here is the table of size for each bubble : ");
+                       
+
+                       double[] distances = serial.calculerDistances(bubbleTimes, vitesse);
+
+                       for (int i = 0; i < distances.length; i++) {
+                           System.out.printf("distance " + i + ": %.2f cm\n", distances[i]);
+                       }
+                
+                       System.out.println("-----------CRYSTAL DATA---------------");
+                    
+                  //cristaux     
+                       int crystalCount = serial.countCrystals(crystalDatax, dataIndex,referenceValueCrystalLow,referenceValueCrystalHigh);
+                    System.out.println("The number of crystal detected during acquisition is : "
+                            + crystalCount ); 
+                    
+                   
+
+                    System.out.println("Here is a table listing all the crystal index :  ");
+
+                    // Call the getCrystalData method to obtain crystal data
+                    double[][] crystalData = serial.getCrystalData(crystalDatax, dataIndex, referenceValueCrystalLow,referenceValueCrystalHigh,timeInterval);
+
+                 // Declaration of individual tables
+                       double[] crystalIndex = new double[crystalData.length];
+                       double[] crystalTimes = new double[crystalData.length];
+                    
+                       
+                    // Display of indices and associated times for crystal
+                    
+                    System.out.println("Here is the table of crystal indices and their associated times: ");
+
+                    for (int i = 0; i < crystalData.length; i++) {
+                    	crystalIndex[i] = crystalData[i][0]; // index associé à chaque bulle
+                    	crystalTimes[i] = crystalData[i][1]; // temps associé à chaque bulle
+                        System.out.printf("The crystal is in position %.0f and it passes through the detector after %.4f s, and the crystal passes during %.4f s\n",
+                        crystalIndex[i], serial.calculateTime((int) crystalIndex[i],timeInterval), crystalTimes[i]);
+                    }
+                    
+                    
+                    System.out.println("Here is the table of size for each crystal : ");
+                    
+                    
+                    double[] distance = serial.calculerDistances(crystalTimes, vitesse);
+
+                    for (int i = 0; i < distance.length; i++) {
+                        System.out.printf("distance " + i + ": %.3f cm\n", distance[i]);
+                    }
+             
+                 // Statistics Table
+
+                 // Creation of a table with clues and times for the bubbles
+                    GridPane tableGridPane1 = fillTableBubble(bubbleIndex , bubbleDatax, dataIndex, bubbleTimes, distances,timeInterval );// bulle
+                 // Creation of a table with the indices and times for the crystals 
+                    GridPane tableGridPane2 = fillTableCrystal(crystalIndex , crystalDatax, dataIndex, crystalTimes, distance,timeInterval );
+
+                    // Statistics Menu
+                    
+                    //bubble
+                    gridPane.add(addVBoxx(serial.countBubbles(bubbleDatax, dataIndex,referenceValueBubble),
+                            ((serial.countBubbles(bubbleDatax, dataIndex,referenceValueBubble) * 100) / dataIndex),presence), 0, 0);
+                    gridPane.add(tableGridPane1, 1, 0);
+                     
+                    //crystal
+                    gridPane.add(addVBoxxx(serial.countCrystals(crystalDatax, dataIndex,referenceValueCrystalLow,referenceValueCrystalHigh),
+                            ((serial.countCrystals(crystalDatax, dataIndex,referenceValueCrystalLow,referenceValueCrystalHigh) * 100) / dataIndex),!presence), 0, 1);
+                    gridPane.add(tableGridPane2, 1, 1);
+                    
+                    
+                    
+                    
+                    
+
+                 // Update acquisition status
+                    
+                    premiereAcquisition = false;
+                } else {
+                	// Exit the handle method prematurely
+                    return;
+                }
+            }
+        };
+
+        animation.start();
+
+     // Window display
+        stage.show();
+    }
+    public GridPane fillTableBubble(double[] indices, float[] oscilloscopeData, int dataIndex,double[] TimeBubble,double[] distances,double timeInterval) {
+        GridPane gridPane = new GridPane();
+        gridPane.setHgap(10);
+        gridPane.setVgap(10);
+
+     // Add column headers
+        Label labelIndice = new Label("Bubble index");
+        labelIndice.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+        gridPane.add(labelIndice, 0, 0);
+        
+        Label labelposition = new Label("Sample number");
+        labelposition.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+        gridPane.add(labelposition, 1, 0);
+
+        Label labelTimeArrival = new Label("Arrival time under the detector");
+        labelTimeArrival.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+        gridPane.add(labelTimeArrival, 2, 0);
+
+        
+        Label labelTimePassage = new Label(" Bubble passage time ");
+        labelTimePassage.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+        gridPane.add(labelTimePassage, 3, 0);
+        
+        Label labelSize = new Label(" Size of bubble ");
+        labelSize.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+        gridPane.add(labelSize, 4, 0);
+        
+        // Added Data
+        for (int i = 0; i < indices.length; i++) {
+            double indice = indices[i];
+            double temps = serial.calculateTime(indice,timeInterval);
+            
+            Label labelIndiceValue = new Label(Integer.toString(i + 1));
+            gridPane.add(labelIndiceValue, 0, i + 1);
+            Label labelPositionValue = new Label(Double.toString(indice));
+            gridPane.add(labelPositionValue, 1, i + 1);
+            Label labelTimeValue = new Label(String.format("%.4f s", temps));
+            gridPane.add(labelTimeValue, 2, i + 1);
+            Label labelTimeBubble = new Label(String.format("%.4f s", TimeBubble[i]));
+            gridPane.add(labelTimeBubble, 3, i + 1);
+            
+            Label labelSizes = new Label(String.format("%.2f cm", distances[i]));
+            gridPane.add(labelSizes, 4, i + 1);
+            
+            Separator separator = new Separator();
+            separator.setMaxWidth(Double.MAX_VALUE);
+            gridPane.add(separator, 0, i , 6, 2);
+            
+            
+        	
+        }
+        return gridPane;
+    }
+    public GridPane fillTableCrystal(double[] indices, float[] oscilloscopeData, int dataIndex,double[] TimeBubble,double[] distances,double timeInterval) {
+        GridPane gridPane = new GridPane();
+        gridPane.setHgap(10);
+        gridPane.setVgap(10);
+
+     // Add column headers
+        Label labelIndice = new Label("Crystal index");
+        labelIndice.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+        gridPane.add(labelIndice, 0, 0);
+        
+        Label labelposition = new Label("Sample number");
+        labelposition.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+        gridPane.add(labelposition, 1, 0);
+
+        Label labelTimeArrival = new Label("Arrival time under the detector");
+        labelTimeArrival.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+        gridPane.add(labelTimeArrival, 2, 0);
+
+        
+        Label labelTimePassage = new Label(" Crystal passage time ");
+        labelTimePassage.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+        gridPane.add(labelTimePassage, 3, 0);
+        
+        Label labelSize = new Label(" Size of Crystal ");
+        labelSize.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+        gridPane.add(labelSize, 4, 0);
+        
+        // Added Data
+        for (int i = 0; i < indices.length; i++) {
+            double indice = indices[i];
+            double temps = serial.calculateTime(indice,timeInterval);
+            
+            Label labelIndiceValue = new Label(Integer.toString(i + 1));
+            gridPane.add(labelIndiceValue, 0, i + 1);
+            Label labelPositionValue = new Label(Double.toString(indice));
+            gridPane.add(labelPositionValue, 1, i + 1);
+            Label labelTimeValue = new Label(String.format("%.4f s", temps));
+            gridPane.add(labelTimeValue, 2, i + 1);
+            Label labelTimeCrystal = new Label(String.format("%.4f s", TimeBubble[i]));
+            gridPane.add(labelTimeCrystal, 3, i + 1);
+            
+            Label labelSizes = new Label(String.format("%.2f cm", distances[i]));
+            gridPane.add(labelSizes, 4, i + 1);
+            
+            Separator separator = new Separator();
+            separator.setMaxWidth(Double.MAX_VALUE);
+            gridPane.add(separator, 0, i , 6, 2);
+            
+            
+        	
+        }
+        return gridPane;
+    }}
